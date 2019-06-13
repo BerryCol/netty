@@ -15,20 +15,26 @@
 package io.netty.handler.codec.http2;
 
 import io.netty.channel.ChannelHandler;
+import org.junit.Ignore;
 
-public class Http2MultiplexCodecClientUpgradeTest extends Http2MultiplexClientUpgradeTest<Http2MultiplexCodec> {
+/**
+ * Unit tests for {@link Http2MultiplexHandler}.
+ */
+public class Http2MultiplexHandlerTest extends Http2MultiplexTest<Http2FrameCodec> {
 
     @Override
-    protected Http2MultiplexCodec newCodec(ChannelHandler upgradeHandler) {
-        Http2MultiplexCodecBuilder builder = Http2MultiplexCodecBuilder.forClient(new NoopHandler());
-        if (upgradeHandler != null) {
-            builder.withUpgradeStreamHandler(upgradeHandler);
-        }
-        return builder.build();
+    protected Http2FrameCodec newCodec(TestChannelInitializer childChannelInitializer, Http2FrameWriter frameWriter) {
+        return new Http2FrameCodecBuilder(true).frameWriter(frameWriter).build();
     }
 
     @Override
-    protected ChannelHandler newMultiplexer(ChannelHandler upgradeHandler) {
-        return null;
+    protected ChannelHandler newMultiplexer(TestChannelInitializer childChannelInitializer) {
+        return new Http2MultiplexHandler(childChannelInitializer, null);
+    }
+
+    @Ignore("Test does not work as we not mock the FlowController")
+    @Override
+    public void writabilityAndFlowControl() {
+        // Ignore
     }
 }
