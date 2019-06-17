@@ -167,6 +167,17 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
     }
 
+    protected SingleThreadEventExecutor(EventExecutorGroup parent, Executor executor,
+                                        boolean addTaskWakesUp, Queue<Runnable> taskQueue,
+                                        RejectedExecutionHandler rejectedHandler) {
+        super(parent);
+        this.addTaskWakesUp = addTaskWakesUp;
+        this.maxPendingTasks = 16;
+        this.executor = ThreadExecutorMap.apply(executor, this);
+        this.taskQueue = ObjectUtil.checkNotNull(taskQueue, "taskQueue");
+        rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
+    }
+
     /**
      * @deprecated Please use and override {@link #newTaskQueue(int)}.
      */
