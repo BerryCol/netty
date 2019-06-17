@@ -164,23 +164,23 @@ public final class Http2MultiplexHandler extends Http2ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         parentReadInProgress = true;
-        if (msg instanceof Http2Frame) {
-            Http2Frame frame = (Http2Frame) msg;
-            if (frame instanceof Http2StreamFrame) {
-                Http2StreamFrame streamFrame = (Http2StreamFrame) frame;
-                DefaultHttp2FrameStream s =
-                        (DefaultHttp2FrameStream) streamFrame.stream();
-                ((AbstractHttp2StreamChannel) s.attachment).fireChildRead(streamFrame);
-                return;
-            } else if (frame instanceof Http2GoAwayFrame) {
-                onHttp2GoAwayFrame(ctx, (Http2GoAwayFrame) frame);
-            } else if (frame instanceof Http2SettingsFrame) {
-                Http2Settings settings = ((Http2SettingsFrame) frame).settings();
-                if (settings.initialWindowSize() != null) {
-                    initialOutboundStreamWindow = settings.initialWindowSize();
-                }
+        if (msg instanceof Http2StreamFrame) {
+            Http2StreamFrame streamFrame = (Http2StreamFrame) msg;
+            DefaultHttp2FrameStream s =
+                    (DefaultHttp2FrameStream) streamFrame.stream();
+            ((AbstractHttp2StreamChannel) s.attachment).fireChildRead(streamFrame);
+            return;
+        }
+
+        if (msg instanceof Http2GoAwayFrame) {
+            onHttp2GoAwayFrame(ctx, (Http2GoAwayFrame) msg);
+        } else if (msg instanceof Http2SettingsFrame) {
+            Http2Settings settings = ((Http2SettingsFrame) msg).settings();
+            if (settings.initialWindowSize() != null) {
+                initialOutboundStreamWindow = settings.initialWindowSize();
             }
         }
+
         // Send everything down the pipeline
         ctx.fireChannelRead(msg);
     }
