@@ -37,6 +37,11 @@ public final class Http2ConnectionHandlerBuilder
     }
 
     @Override
+    public Http2Settings initialSettings() {
+        return super.initialSettings();
+    }
+
+    @Override
     public Http2ConnectionHandlerBuilder frameListener(Http2FrameListener frameListener) {
         return super.frameListener(frameListener);
     }
@@ -88,6 +93,7 @@ public final class Http2ConnectionHandlerBuilder
     }
 
     @Override
+    @Deprecated
     public Http2ConnectionHandlerBuilder initialHuffmanDecodeCapacity(int initialHuffmanDecodeCapacity) {
         return super.initialHuffmanDecodeCapacity(initialHuffmanDecodeCapacity);
     }

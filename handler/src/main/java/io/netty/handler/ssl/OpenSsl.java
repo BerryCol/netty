@@ -26,6 +26,7 @@ import io.netty.internal.tcnative.SSLContext;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
+import io.netty.util.internal.EmptyArrays;
 import io.netty.util.internal.NativeLibraryLoader;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.SystemPropertyUtil;
@@ -44,7 +45,7 @@ import java.util.Set;
 import static io.netty.handler.ssl.SslUtils.*;
 
 /**
- * Tells if <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
+ * Tells if <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
  * are available.
  */
 public final class OpenSsl {
@@ -62,6 +63,7 @@ public final class OpenSsl {
     private static final boolean TLSV13_SUPPORTED;
     private static final boolean IS_BORINGSSL;
     static final Set<String> SUPPORTED_PROTOCOLS_SET;
+    static final String[] EXTRA_SUPPORTED_TLS_1_3_CIPHERS;
 
     // self-signed certificate for netty.io and the matching private-key
     private static final String CERT = "-----BEGIN CERTIFICATE-----\n" +
@@ -118,7 +120,8 @@ public final class OpenSsl {
         } else {
             // Test if netty-tcnative is in the classpath first.
             try {
-                Class.forName("io.netty.internal.tcnative.SSL", false, OpenSsl.class.getClassLoader());
+                Class.forName("io.netty.internal.tcnative.SSLContext", false,
+                        PlatformDependent.getClassLoader(OpenSsl.class));
             } catch (ClassNotFoundException t) {
                 cause = t;
                 logger.debug(
@@ -137,7 +140,7 @@ public final class OpenSsl {
                             "Failed to load netty-tcnative; " +
                                     OpenSslEngine.class.getSimpleName() + " will be unavailable, unless the " +
                                     "application has already loaded the symbols by some other means. " +
-                                    "See http://netty.io/wiki/forked-tomcat-native.html for more information.", t);
+                                    "See https://netty.io/wiki/forked-tomcat-native.html for more information.", t);
                 }
 
                 try {
@@ -160,7 +163,7 @@ public final class OpenSsl {
                     logger.debug(
                             "Failed to initialize netty-tcnative; " +
                                     OpenSslEngine.class.getSimpleName() + " will be unavailable. " +
-                                    "See http://netty.io/wiki/forked-tomcat-native.html for more information.", t);
+                                    "See https://netty.io/wiki/forked-tomcat-native.html for more information.", t);
                 }
             }
         }
@@ -177,6 +180,13 @@ public final class OpenSsl {
             boolean tlsv13Supported = false;
 
             IS_BORINGSSL = "BoringSSL".equals(versionString());
+            if (IS_BORINGSSL) {
+                EXTRA_SUPPORTED_TLS_1_3_CIPHERS = new String [] { "TLS_AES_128_GCM_SHA256",
+                        "TLS_AES_256_GCM_SHA384" ,
+                        "TLS_CHACHA20_POLY1305_SHA256" };
+            }  else {
+                EXTRA_SUPPORTED_TLS_1_3_CIPHERS = EmptyArrays.EMPTY_STRINGS;
+            }
 
             try {
                 final long sslCtx = SSLContext.make(SSL.SSL_PROTOCOL_ALL, SSL.SSL_MODE_SERVER);
@@ -222,10 +232,8 @@ public final class OpenSsl {
                         if (IS_BORINGSSL) {
                             // Currently BoringSSL does not include these when calling SSL.getCiphers() even when these
                             // are supported.
+                            Collections.addAll(availableOpenSslCipherSuites, EXTRA_SUPPORTED_TLS_1_3_CIPHERS);
                             Collections.addAll(availableOpenSslCipherSuites,
-                                               "TLS_AES_128_GCM_SHA256",
-                                               "TLS_AES_256_GCM_SHA384" ,
-                                               "TLS_CHACHA20_POLY1305_SHA256",
                                                "AEAD-AES128-GCM-SHA256",
                                                "AEAD-AES256-GCM-SHA384",
                                                "AEAD-CHACHA20-POLY1305-SHA256");
@@ -372,6 +380,7 @@ public final class OpenSsl {
             SUPPORTS_OCSP = false;
             TLSV13_SUPPORTED = false;
             IS_BORINGSSL = false;
+            EXTRA_SUPPORTED_TLS_1_3_CIPHERS = EmptyArrays.EMPTY_STRINGS;
         }
     }
 
@@ -422,7 +431,7 @@ public final class OpenSsl {
 
     /**
      * Returns {@code true} if and only if
-     * <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
+     * <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support
      * are available.
      */
     public static boolean isAvailable() {
@@ -432,7 +441,10 @@ public final class OpenSsl {
     /**
      * Returns {@code true} if the used version of openssl supports
      * <a href="https://tools.ietf.org/html/rfc7301">ALPN</a>.
+     *
+     * @deprecated use {@link SslProvider#isAlpnSupported(SslProvider)} with {@link SslProvider#OPENSSL}.
      */
+    @Deprecated
     public static boolean isAlpnSupported() {
         return version() >= 0x10002000L;
     }
@@ -461,7 +473,7 @@ public final class OpenSsl {
     }
 
     /**
-     * Ensure that <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and
+     * Ensure that <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and
      * its OpenSSL support are available.
      *
      * @throws UnsatisfiedLinkError if unavailable
@@ -475,7 +487,7 @@ public final class OpenSsl {
 
     /**
      * Returns the cause of unavailability of
-     * <a href="http://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support.
+     * <a href="https://netty.io/wiki/forked-tomcat-native.html">{@code netty-tcnative}</a> and its OpenSSL support.
      *
      * @return the cause if unavailable. {@code null} if available.
      */
@@ -552,20 +564,30 @@ public final class OpenSsl {
         String os = PlatformDependent.normalizedOs();
         String arch = PlatformDependent.normalizedArch();
 
-        Set<String> libNames = new LinkedHashSet<String>(4);
+        Set<String> libNames = new LinkedHashSet<String>(5);
         String staticLibName = "netty_tcnative";
 
         // First, try loading the platform-specific library. Platform-specific
         // libraries will be available if using a tcnative uber jar.
-        libNames.add(staticLibName + "_" + os + '_' + arch);
         if ("linux".equalsIgnoreCase(os)) {
-            // Fedora SSL lib so naming (libssl.so.10 vs libssl.so.1.0.0)..
+            Set<String> classifiers = PlatformDependent.normalizedLinuxClassifiers();
+            for (String classifier : classifiers) {
+                libNames.add(staticLibName + "_" + os + '_' + arch + "_" + classifier);
+            }
+            // generic arch-dependent library
+            libNames.add(staticLibName + "_" + os + '_' + arch);
+
+            // Fedora SSL lib so naming (libssl.so.10 vs libssl.so.1.0.0).
+            // note: should already be included from the classifiers but if not, we use this as an
+            //       additional fallback option here
             libNames.add(staticLibName + "_" + os + '_' + arch + "_fedora");
+        } else {
+            libNames.add(staticLibName + "_" + os + '_' + arch);
         }
         libNames.add(staticLibName + "_" + arch);
         libNames.add(staticLibName);
 
-        NativeLibraryLoader.loadFirstAvailable(SSL.class.getClassLoader(),
+        NativeLibraryLoader.loadFirstAvailable(PlatformDependent.getClassLoader(SSLContext.class),
             libNames.toArray(new String[0]));
     }
 

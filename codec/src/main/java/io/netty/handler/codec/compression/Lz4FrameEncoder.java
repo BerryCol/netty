@@ -31,7 +31,6 @@ import io.netty.util.internal.ObjectUtil;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.xxhash.XXHashFactory;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
@@ -125,8 +124,7 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
      *                        and is slower but compresses more efficiently
      */
     public Lz4FrameEncoder(boolean highCompressor) {
-        this(LZ4Factory.fastestInstance(), highCompressor, DEFAULT_BLOCK_SIZE,
-                XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED).asChecksum());
+        this(LZ4Factory.fastestInstance(), highCompressor, DEFAULT_BLOCK_SIZE, new Lz4XXHash32(DEFAULT_SEED));
     }
 
     /**
@@ -160,12 +158,8 @@ public class Lz4FrameEncoder extends MessageToByteEncoder<ByteBuf> {
          */
     public Lz4FrameEncoder(LZ4Factory factory, boolean highCompressor, int blockSize,
                            Checksum checksum, int maxEncodeSize) {
-        if (factory == null) {
-            throw new NullPointerException("factory");
-        }
-        if (checksum == null) {
-            throw new NullPointerException("checksum");
-        }
+        ObjectUtil.checkNotNull(factory, "factory");
+        ObjectUtil.checkNotNull(checksum, "checksum");
 
         compressor = highCompressor ? factory.highCompressor() : factory.fastCompressor();
         this.checksum = ByteBufChecksum.wrapChecksum(checksum);

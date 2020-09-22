@@ -14,6 +14,7 @@
  */
 package io.netty.example.http2.helloworld.client;
 
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -97,7 +98,8 @@ public class Http2ClientInitializer extends ChannelInitializer<SocketChannel> {
      */
     private void configureSsl(SocketChannel ch) {
         ChannelPipeline pipeline = ch.pipeline();
-        pipeline.addLast(sslCtx.newHandler(ch.alloc()));
+        // Specify Host in SSLContext New Handler to add TLS SNI Extension
+        pipeline.addLast(sslCtx.newHandler(ch.alloc(), Http2Client.HOST, Http2Client.PORT));
         // We must wait for the handshake to finish and the protocol to be negotiated before configuring
         // the HTTP/2 components of the pipeline.
         pipeline.addLast(new ApplicationProtocolNegotiationHandler("") {
@@ -137,7 +139,7 @@ public class Http2ClientInitializer extends ChannelInitializer<SocketChannel> {
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             DefaultFullHttpRequest upgradeRequest =
-                    new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+                    new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/", Unpooled.EMPTY_BUFFER);
 
             // Set HOST header as the remote peer may require it.
             InetSocketAddress remote = (InetSocketAddress) ctx.channel().remoteAddress();

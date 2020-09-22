@@ -31,6 +31,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.channel.EventLoop;
 import io.netty.channel.RecvByteBufAllocator;
+import io.netty.channel.nio.AbstractNioChannel;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.SocketChannelConfig;
@@ -38,7 +39,6 @@ import io.netty.channel.unix.FileDescriptor;
 import io.netty.channel.unix.Socket;
 import io.netty.channel.unix.UnixChannel;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.ThrowableUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -82,24 +82,24 @@ abstract class AbstractEpollChannel extends AbstractChannel implements UnixChann
 
     AbstractEpollChannel(Channel parent, LinuxSocket fd, boolean active) {
         super(parent);
-        socket = checkNotNull(fd, "fd");
+        this.socket = checkNotNull(fd, "fd");
         this.active = active;
         if (active) {
             // Directly cache the remote and local addresses
             // See https://github.com/netty/netty/issues/2359
-            local = fd.localAddress();
-            remote = fd.remoteAddress();
+            this.local = fd.localAddress();
+            this.remote = fd.remoteAddress();
         }
     }
 
     AbstractEpollChannel(Channel parent, LinuxSocket fd, SocketAddress remote) {
         super(parent);
-        socket = checkNotNull(fd, "fd");
-        active = true;
+        this.socket = checkNotNull(fd, "fd");
+        this.active = true;
         // Directly cache the remote and local addresses
         // See https://github.com/netty/netty/issues/2359
         this.remote = remote;
-        local = fd.localAddress();
+        this.local = fd.localAddress();
     }
 
     static boolean isSoErrorZero(Socket fd) {
@@ -190,6 +190,11 @@ abstract class AbstractEpollChannel extends AbstractChannel implements UnixChann
         } finally {
             socket.close();
         }
+    }
+
+    void resetCachedAddresses() {
+        local = socket.localAddress();
+        remote = socket.remoteAddress();
     }
 
     @Override
@@ -568,9 +573,9 @@ abstract class AbstractEpollChannel extends AbstractChannel implements UnixChann
                             @Override
                             public void run() {
                                 ChannelPromise connectPromise = AbstractEpollChannel.this.connectPromise;
-                                ConnectTimeoutException cause =
-                                        new ConnectTimeoutException("connection timed out: " + remoteAddress);
-                                if (connectPromise != null && connectPromise.tryFailure(cause)) {
+                                if (connectPromise != null && !connectPromise.isDone()
+                                        && connectPromise.tryFailure(new ConnectTimeoutException(
+                                        "connection timed out: " + remoteAddress))) {
                                     close(voidPromise());
                                 }
                             }
